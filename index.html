@@ -1,66 +1,105 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Invoice Value Calculator</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Invoice Value Calculator</title>
 
-  <!-- XLSX Reader -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<!-- XLSX -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
-  <!-- jsPDF + AutoTable -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+<!-- jsPDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 
-  <style>
-    body { margin:0; background:#eef1f6; font-family:system-ui; }
-    .header { background:#0a74d1; color:white; padding:15px; font-size:20px; font-weight:800; }
-    .card { background:white; padding:15px; border-radius:12px; margin:15px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
-    table { width:100%; min-width:900px; border-collapse:separate; border-spacing:0; }
-    th { background:#f5f7fa; padding:10px; font-size:12px; border-bottom:1px solid #ddd; }
-    td { padding:10px; border-bottom:1px solid #eee; }
-    .num { text-align:right; }
+<style>
+  body { margin:0; background:#eef1f6; font-family:system-ui; }
 
-    .stickyBar { position:fixed; bottom:0; left:0; right:0; background:#0a74d1; padding:15px; }
-    .stickyBar button { width:100%; padding:12px; background:white; color:#0a74d1; font-size:16px; font-weight:700; border:none; border-radius:10px; }
-  </style>
+  .header {
+    background:#0a74d1; color:white; padding:15px;
+    font-size:20px; font-weight:800;
+  }
+
+  .card {
+    background:white; padding:15px; margin:15px;
+    border-radius:12px; box-shadow:0 2px 6px rgba(0,0,0,0.1);
+  }
+
+  label { font-size:14px; font-weight:600; margin-bottom:4px; display:block; }
+
+  input, select {
+    width:100%; padding:10px;
+    border:1px solid #ccc; border-radius:8px; font-size:14px;
+  }
+
+  table {
+    width:100%; border-collapse:separate; border-spacing:0;
+    min-width:1100px;
+  }
+
+  th {
+    background:#f5f7fa; padding:10px; font-size:12px; border-bottom:1px solid #ddd;
+  }
+
+  td { padding:10px; border-bottom:1px solid #eee; }
+  .num { text-align:right; }
+
+  .stickyBar {
+    position:fixed; bottom:0; left:0; right:0;
+    background:#0a74d1; padding:15px;
+  }
+
+  .stickyBar button {
+    width:100%; padding:14px; background:white;
+    color:#0a74d1; font-size:16px; font-weight:700;
+    border:none; border-radius:10px;
+  }
+
+  @media (max-width:700px) {
+    .flexRow { flex-direction:column !important; }
+  }
+</style>
 </head>
 
 <body>
 
 <div class="header">Invoice Value Calculator</div>
 
+<!-- Distributor + Salesman MOBILE-FRIENDLY -->
 <div class="card">
-  <div style="display:flex; gap:20px;">
+  <div class="flexRow" style="display:flex; gap:20px;">
     <div style="flex:1;">
       <label>Distributor</label>
       <select id="distributor" onchange="changeDistributor(this.value)"></select>
     </div>
-    <div style="flex:1;">
-      <label>Salesman Name</label>
-      <input id="salesman" />
-    </div>
+  </div>
+
+  <div style="margin-top:15px;">
+    <label>Salesman Name</label>
+    <input id="salesman" placeholder="Enter Salesman Name"/>
   </div>
 </div>
 
+<!-- Add Row -->
 <div class="card">
   <button onclick="addRow()" style="width:100%; padding:12px; background:#0a74d1; color:white; font-size:16px; border:none; border-radius:10px;">
     + Add Row
   </button>
   <br/><br/>
-  <button onclick="clearAll()" style="width:100%; padding:12px; background:#d9d9d9; color:#000; font-size:16px; border:none; border-radius:10px;">
+  <button onclick="clearAll()" style="width:100%; padding:12px; background:#dcdcdc; color:#000; font-size:16px; border:none; border-radius:10px;">
     Clear
   </button>
 </div>
 
+<!-- Table -->
 <div class="card">
-  <div style="overflow:auto;">
+  <div style="overflow-x:auto;">
     <table>
       <thead>
         <tr>
           <th>Product</th>
           <th>SKU</th>
-          <th class="num">Rate (₹)</th>
+          <th class="num">Rate (Rs.)</th>
           <th class="num">Units</th>
           <th class="num">Final Qty (L/Kg)</th>
           <th class="num">Disc%</th>
@@ -75,14 +114,15 @@
   </div>
 </div>
 
-<!-- TOTALS BLOCK -->
+<!-- Totals -->
 <div class="card">
   <h3>Totals</h3>
-  <div><b>Total Pre-GST:</b> ₹ <span id="t_pre">0.00</span></div>
-  <div><b>Total GST:</b> ₹ <span id="t_gst">0.00</span></div>
-  <div><b>Total Amount:</b> ₹ <span id="t_post">0.00</span></div>
+  <div><b>Total Pre-GST:</b> <span id="t_pre">Rs. 0.00</span></div>
+  <div><b>Total GST:</b> <span id="t_gst">Rs. 0.00</span></div>
+  <div><b>Total Amount:</b> <span id="t_post">Rs. 0.00</span></div>
 </div>
 
+<!-- PDF Button -->
 <div class="stickyBar">
   <button onclick="savePdf()">Generate PDF</button>
 </div>
@@ -91,147 +131,124 @@
 
 <script>
 let ROWS = [];
-const MAX_ROWS = 10;
 const $ = id => document.getElementById(id);
 
 function addRow() {
-  if (ROWS.length >= MAX_ROWS) return alert("Max 10 rows allowed");
   ROWS.push({ product:"", sku:"", units:"", disc:"0" });
   render();
 }
 
-function removeRow(i){
-  ROWS.splice(i,1);
-  render();
-}
-
-function clearAll() {
-  ROWS = [];
-  render();
-}
+function removeRow(i){ ROWS.splice(i,1); render(); }
+function clearAll(){ ROWS = []; render(); }
 
 function render() {
-  const tbody = $("tbody");
+  let tbody = $("tbody");
   tbody.innerHTML = "";
 
   ROWS.forEach((r,i)=>{
-    const tr = document.createElement("tr");
+    let tr = document.createElement("tr");
 
     let productOpts = Object.keys(MASTER)
       .map(p => `<option value="${p}" ${p===r.product?"selected":""}>${p}</option>`)
       .join("");
 
-    let skuOptions = "<option value=''>Select</option>";
-
+    let skuOpts = "<option value=''>Select</option>";
     if (r.product) {
-      Object.keys(MASTER[r.product]).forEach(sku=>{
-        skuOptions += `<option value="${sku}" ${sku===r.sku?"selected":""}>${sku}</option>`;
-      });
+      Object.keys(MASTER[r.product]).forEach(s =>
+        skuOpts += `<option value="${s}" ${s===r.sku?"selected":""}>${s}</option>`
+      );
     }
 
-    let finalQtyTxt = "-";
     let rateTxt = "-";
+    let finalQtyTxt = "-";
 
     if (r.product && r.sku) {
       const item = MASTER[r.product][r.sku];
-      const units = Number(r.units || 0);
-
       rateTxt = item.rate.toFixed(2);
 
-      if (units > 0) {
-        const finalQty = (item.packSize * units).toFixed(2);
-        finalQtyTxt = `${finalQty} ${item.unit}`;
+      if (r.units) {
+        let qty = (item.packSize * Number(r.units)).toFixed(2);
+        finalQtyTxt = `${qty} ${item.unit}`;
       }
     }
 
     tr.innerHTML = `
-      <td>
-        <select onchange="ROWS[${i}].product=this.value; ROWS[${i}].sku=''; render()">
-          <option value="">Select</option>${productOpts}
-        </select>
-      </td>
+      <td><select onchange="ROWS[${i}].product=this.value; ROWS[${i}].sku=''; render()">
+            <option value="">Select</option>${productOpts}
+          </select></td>
 
-      <td>
-        <select onchange="ROWS[${i}].sku=this.value; render()">
-          ${skuOptions}
-        </select>
-      </td>
+      <td><select onchange="ROWS[${i}].sku=this.value; render()">${skuOpts}</select></td>
 
-      <td class="num">${rateTxt}</td>
+      <td class="num">Rs. ${rateTxt}</td>
 
       <td class="num">
         <input type="number" min="1" step="1" value="${r.units}"
-               onchange="ROWS[${i}].units=this.value; calcTotals()"/>
+          oninput="ROWS[${i}].units=this.value; calcTotals()"/>
       </td>
 
       <td class="num">${finalQtyTxt}</td>
 
       <td class="num">
         <input type="number" min="0" max="100" value="${r.disc}"
-               onchange="ROWS[${i}].disc=this.value; calcTotals()"/>
+        oninput="ROWS[${i}].disc=this.value; calcTotals()"/>
       </td>
 
-      <td class="num" id="pre_${i}">0.00</td>
-      <td class="num" id="gst_${i}">0.00</td>
-      <td class="num" id="post_${i}">0.00</td>
+      <td class="num" id="pre_${i}">Rs. 0.00</td>
+      <td class="num" id="gst_${i}">Rs. 0.00</td>
+      <td class="num" id="post_${i}">Rs. 0.00</td>
 
       <td><button onclick="removeRow(${i})">x</button></td>
     `;
-
     tbody.appendChild(tr);
   });
 
   calcTotals();
 }
 
-function calcTotals() {
+function calcTotals(){
   let preT=0, gstT=0, postT=0;
 
   ROWS.forEach((r,i)=>{
     if (!r.product || !r.sku || !r.units) return;
 
     const item = MASTER[r.product][r.sku];
-    const rate = item.rate;
-    const gstPct = item.gst;
-    const units = Number(r.units);
-    const disc = Number(r.disc);
+    let units = Number(r.units);
+    let disc = Number(r.disc);
 
-    const gross = rate * units;
-    const discAmt = gross * (disc/100);
+    let gross = item.rate * units;
+    let discAmt = gross * disc/100;
 
-    const pre = gross - discAmt;
-    const gst = pre * (gstPct/100);
-    const post = pre + gst;
+    let pre  = gross - discAmt;
+    let gst  = pre * item.gst/100;
+    let post = pre + gst;
 
-    $("pre_"+i).textContent = pre.toFixed(2);
-    $("gst_"+i).textContent = gst.toFixed(2);
-    $("post_"+i).textContent = post.toFixed(2);
+    $("pre_"+i).textContent  = "Rs. " + pre.toFixed(2);
+    $("gst_"+i).textContent  = "Rs. " + gst.toFixed(2);
+    $("post_"+i).textContent = "Rs. " + post.toFixed(2);
 
-    preT += pre;
-    gstT += gst;
-    postT += post;
+    preT+=pre; gstT+=gst; postT+=post;
   });
 
-  $("t_pre").textContent = preT.toFixed(2);
-  $("t_gst").textContent = gstT.toFixed(2);
-  $("t_post").textContent = postT.toFixed(2);
+  $("t_pre").textContent  = "Rs. " + preT.toFixed(2);
+  $("t_gst").textContent  = "Rs. " + gstT.toFixed(2);
+  $("t_post").textContent = "Rs. " + postT.toFixed(2);
 }
 
-function savePdf() {
+function savePdf(){
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  const now = new Date();
-  const timestamp = now.toLocaleDateString() + " " + now.toLocaleTimeString();
+  const ts = new Date().toLocaleString();
 
   doc.setFontSize(14);
-  doc.text("Invoice Value Calculator", 14, 12);
+  doc.text("Invoice Value Calculator", 14, 14);
 
   doc.setFontSize(11);
-  doc.text(`Distributor: ${$("distributor").value}`, 14, 20);
-  doc.text(`Salesman: ${$("salesman").value}`, 14, 26);
-  doc.text(`Date & Time: ${timestamp}`, 14, 32);
+  doc.text("Distributor: " + $("distributor").value, 14, 22);
+  doc.text("Salesman: " + $("salesman").value, 14, 28);
+  doc.text("Date & Time: " + ts, 14, 34);
 
+  // Table data
   let rows = [];
   let preT=0, gstT=0, postT=0;
 
@@ -239,19 +256,19 @@ function savePdf() {
     if (!r.product || !r.sku || !r.units) return;
 
     const item = MASTER[r.product][r.sku];
-    const units = Number(r.units);
-    const disc = Number(r.disc);
+    let units = Number(r.units);
+    let disc = Number(r.disc);
 
-    const finalQty = (item.packSize * units).toFixed(2) + " " + item.unit;
+    let finalQty = (item.packSize * units).toFixed(2) + " " + item.unit;
 
-    const gross = item.rate * units;
-    const discAmt = gross * (disc/100);
+    let gross = item.rate * units;
+    let discAmt = gross * disc/100;
 
-    const pre = gross - discAmt;
-    const gst = pre * (item.gst/100);
-    const post = pre + gst;
+    let pre  = gross - discAmt;
+    let gst  = pre * item.gst/100;
+    let post = pre + gst;
 
-    preT += pre; gstT += gst; postT += post;
+    preT+=pre; gstT+=gst; postT+=post;
 
     rows.push([
       r.sku,
@@ -271,15 +288,13 @@ function savePdf() {
     body: rows
   });
 
-  let finalY = doc.lastAutoTable.finalY + 12;
-
-  doc.text(`Total Pre-GST: ₹ ${preT.toFixed(2)}`, 14, finalY);
-  doc.text(`Total GST: ₹ ${gstT.toFixed(2)}`, 14, finalY+6);
-  doc.text(`Grand Total: ₹ ${postT.toFixed(2)}`, 14, finalY+12);
+  let y = doc.lastAutoTable.finalY + 12;
+  doc.text(`Total Pre-GST: Rs. ${preT.toFixed(2)}`, 14, y);
+  doc.text(`Total GST: Rs. ${gstT.toFixed(2)}`, 14, y+6);
+  doc.text(`Grand Total: Rs. ${postT.toFixed(2)}`, 14, y+12);
 
   doc.save("invoice.pdf");
 }
 </script>
-
 </body>
 </html>

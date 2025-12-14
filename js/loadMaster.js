@@ -1,76 +1,78 @@
 let MASTER = {};
-let workbook = null;
 
-async function loadMasterData() {
-  const resp = await fetch("data/prices.xlsx");
-  const buf = await resp.arrayBuffer();
-  workbook = XLSX.read(buf);
+document.addEventListener("DOMContentLoaded", () => {
+  loadExcel();
+});
 
-  let sel = document.getElementById("distributor");
-  sel.innerHTML = workbook.SheetNames.map(s => `<option value="${s}">${s}</option>`).join("");
+function loadExcel() {
+  fetch("../data/master.xlsx")
+    .then(res => res.arrayBuffer())
+    .then(buf => {
+      let wb = XLSX.read(buf, {type:"array"});
 
-  changeDistributor(workbook.SheetNames[0]);
+      // Distributor = sheet name
+      let distributorList = wb.SheetNames;
+      let distSelect = document.getElementById("distributor");
+      distributorList.forEach(d => {
+        let opt = document.createElement("option");
+        opt.value = d;
+        opt.textContent = d;
+        distSelect.appendChild(opt);
+      });
+
+      parseSheet(wb.Sheets[distributorList[0]], distributorList[0]);
+    });
 }
 
 function changeDistributor(sheetName){
-  const sheet = workbook.Sheets[sheetName];
-  const rows = XLSX.utils.sheet_to_json(sheet, {header:1});
-  MASTER = buildMaster(rows);
-  render();
+  fetch("../data/master.xlsx")
+    .then(res => res.arrayBuffer())
+    .then(buf => {
+      let wb = XLSX.read(buf, {type:"array"});
+      parseSheet(wb.Sheets[sheetName], sheetName);
+    });
 }
 
-function buildMaster(rows){
-  let headerIndex = rows.findIndex(r => r.includes("PRODUCT NAME"));
-  let data = rows.slice(headerIndex + 1);
+function parseSheet(sheet, name){
+  let json = XLSX.utils.sheet_to_json(sheet);
 
-  let M = {};
+  MASTER = {};
 
-  data.forEach(r => {
-    let product = r[1];
-    let pack = r[2];
-    let preGST = r[5];
-    let gstRaw = r[6];
+  json.forEach(row=>{
+    let prod = row["PRODUCT NAME"];
+    let sku  = row["PACK"];
+    let rate = Number(row["PRE GST"]);
+    let gst  = Number(String(row["GST"]).replace("%",""));
+    
+    let parsed = parsePack(row["PACK"]);
 
-    if (!product || !pack) return;
+    if (!MASTER[prod]) MASTER[prod] = {};
 
-    const gst =
-      typeof gstRaw === "string" && gstRaw.includes("%")
-        ? parseFloat(gstRaw.replace("%",""))
-        : gstRaw < 1
-          ? gstRaw * 100
-          : gstRaw;
-
-    const packInfo = parsePack(pack);
-    const sku = `${product} ${pack}`;
-
-    if (!M[product]) M[product] = {};
-
-    M[product][sku] = {
-      rate: Number(preGST),
+    MASTER[prod][sku] = {
+      rate: rate,
       gst: gst,
-      packSize: packInfo.size,
-      unit: packInfo.unit
+      packSize: parsed.size,
+      unit: parsed.unit
     };
   });
 
-  return M;
+  ROWS = [];
+  render();
 }
 
 function parsePack(pack){
-  pack = pack.toUpperCase();
+  if (!pack) return { size:1, unit:"Unit" };
 
-  if (pack.includes("ML")) {
-    let ml = parseFloat(pack);
-    return { size: ml/1000, unit:"Litre" };
-  }
-  if (pack.includes("L")) {
-    return { size: parseFloat(pack), unit:"Litre" };
-  }
-  if (pack.includes("KG")) {
-    return { size: parseFloat(pack), unit:"Kg" };
-  }
+  let p = pack.toUpperCase().trim();
+
+  if (p.includes("ML")) return { size: parseFloat(p)/1000, unit:"Litre" };
+
+  if (p.includes("LTR") || p.includes("LITRE") || (p.endsWith("L") && !p.includes("ML")))
+    return { size: parseFloat(p), unit:"Litre" };
+
+  if (p.includes("KG")) return { size: parseFloat(p), unit:"Kg" };
+
+  if (p.includes("GM")) return { size: parseFloat(p)/1000, unit:"Kg" };
 
   return { size:1, unit:"Unit" };
 }
-
-loadMasterData();
