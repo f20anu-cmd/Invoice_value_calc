@@ -6,9 +6,8 @@ async function loadMasterData() {
   const buf = await resp.arrayBuffer();
   workbook = XLSX.read(buf);
 
-  let distSel = document.getElementById("distributor");
-  distSel.innerHTML = workbook.SheetNames
-    .map(s => `<option value="${s}">${s}</option>`).join("");
+  let sel = document.getElementById("distributor");
+  sel.innerHTML = workbook.SheetNames.map(s => `<option value="${s}">${s}</option>`).join("");
 
   changeDistributor(workbook.SheetNames[0]);
 }
@@ -21,42 +20,44 @@ function changeDistributor(sheetName){
 }
 
 function buildMaster(rows){
-  let HEADER = rows.findIndex(r => r.includes("PRODUCT NAME"));
-  let data = rows.slice(HEADER+1);
+  let headerIndex = rows.findIndex(r => r.includes("PRODUCT NAME"));
+  let data = rows.slice(headerIndex + 1);
 
   let M = {};
 
-  data.forEach(r=>{
+  data.forEach(r => {
     let product = r[1];
     let pack = r[2];
-    let pre = r[5];
+    let preGST = r[5];
     let gstRaw = r[6];
 
     if (!product || !pack) return;
 
-    product = product.trim();
+    const gst =
+      typeof gstRaw === "string" && gstRaw.includes("%")
+        ? parseFloat(gstRaw.replace("%",""))
+        : gstRaw < 1
+          ? gstRaw * 100
+          : gstRaw;
+
     const packInfo = parsePack(pack);
-
-    const gst = typeof gstRaw === "string" && gstRaw.includes("%")
-      ? parseFloat(gstRaw.replace("%",""))
-      : gstRaw < 1 ? gstRaw * 100 : gstRaw;
-
     const sku = `${product} ${pack}`;
 
     if (!M[product]) M[product] = {};
 
     M[product][sku] = {
-      rate: Number(pre),
+      rate: Number(preGST),
       gst: gst,
       packSize: packInfo.size,
       unit: packInfo.unit
     };
   });
+
   return M;
 }
 
 function parsePack(pack){
-  pack = pack.trim().toUpperCase();
+  pack = pack.toUpperCase();
 
   if (pack.includes("ML")) {
     let ml = parseFloat(pack);
@@ -68,6 +69,7 @@ function parsePack(pack){
   if (pack.includes("KG")) {
     return { size: parseFloat(pack), unit:"Kg" };
   }
+
   return { size:1, unit:"Unit" };
 }
 
