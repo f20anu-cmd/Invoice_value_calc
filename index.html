@@ -18,7 +18,7 @@
   <style>
     body{
       font-family:-apple-system, BlinkMacSystemFont,"Segoe UI",Roboto;
-      margin:0; background:#f5f6f8; padding-bottom:100px;
+      margin:0; background:#f5f6f8; padding-bottom:120px;
     }
     .header{
       background:#1976d2; color:white; padding:15px;
@@ -44,7 +44,7 @@
 
     table{
       width:100%; border-collapse:separate; border-spacing:0;
-      min-width:900px;
+      min-width:850px;
     }
     th{
       background:#f3f5f8; padding:10px; font-size:12px;
@@ -57,71 +57,67 @@
       position:fixed; bottom:0; left:0; right:0; background:white;
       padding:12px; box-shadow:0 -4px 10px rgba(0,0,0,0.2);
     }
-    .toast{
-      position:fixed; left:50%; bottom:120px; transform:translateX(-50%);
-      background:black; color:white; padding:12px 18px;
-      border-radius:20px; opacity:0; transition:.2s; font-size:13px; font-weight:900;
-    }
-    .toast.show{ opacity:.9; }
+    #totalsCard div { font-size:16px; }
   </style>
 </head>
 <body>
 
 <div class="header">Invoice Value Calculator</div>
 
-<div id="invoice">
-
-  <div class="card">
-    <div class="row">
-      <div>
-        <label>Distributor</label>
-        <select id="distributor" onchange="changeDistributor(this.value)"></select>
-      </div>
-      <div>
-        <label>Salesman Name</label>
-        <input id="salesman"/>
-      </div>
+<div class="card">
+  <div class="row">
+    <div>
+      <label>Distributor</label>
+      <select id="distributor" onchange="changeDistributor(this.value)"></select>
     </div>
-
-    <label style="margin-top:10px;">Generated Timestamp</label>
-    <input id="timestamp" disabled>
-  </div>
-
-  <div class="card">
-    <button class="primary" onclick="addRow()">+ Add Row</button>
-    <button class="ghost" onclick="clearAll()">Clear</button>
-  </div>
-
-  <div class="card">
-    <div style="overflow:auto;">
-      <table>
-        <thead>
-          <tr>
-            <th>Product</th>
-            <th>SKU</th>
-            <th class="num">Rate (₹)</th>
-            <th class="num">Units</th>
-            <th class="num">Final Qty (L/Kg)</th>
-            <th class="num">Disc%</th>
-            <th class="num">Pre-GST</th>
-            <th class="num">GST</th>
-            <th class="num">Post-GST</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody id="tbody"></tbody>
-      </table>
+    <div>
+      <label>Salesman Name</label>
+      <input id="salesman"/>
     </div>
   </div>
+</div>
 
+<div class="card">
+  <button class="primary" onclick="addRow()">+ Add Row</button>
+  <button class="ghost" onclick="clearAll()">Clear</button>
+</div>
+
+<div class="card">
+  <div style="overflow:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>SKU</th>
+          <th class="num">Rate (₹)</th>
+          <th class="num">Units</th>
+          <th class="num">Final Qty (L/Kg)</th>
+          <th class="num">Disc%</th>
+          <th class="num">Pre-GST</th>
+          <th class="num">GST</th>
+          <th class="num">Post-GST</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TOTALS CARD -->
+<div class="card" id="totalsCard">
+  <div><b>Totals</b></div>
+  <div class="row" style="margin-top:8px;">
+    <div><b>Total Pre-GST:</b> ₹ <span id="t_pre">0.00</span></div>
+    <div><b>Total GST:</b> ₹ <span id="t_gst">0.00</span></div>
+    <div><b>Total Amount:</b> ₹ <span id="t_post">0.00</span></div>
+  </div>
 </div>
 
 <!-- Sticky Footer -->
 <div class="stickyBar">
   <button class="primary" onclick="savePdf()">Generate PDF</button>
 </div>
-
-<div id="toast" class="toast"></div>
 
 <script src="js/loadMaster.js"></script>
 
@@ -130,15 +126,8 @@ let ROWS = [];
 const MAX_ROWS = 10;
 const $ = id => document.getElementById(id);
 
-function toast(msg){
-  const t = $("toast");
-  t.textContent = msg;
-  t.classList.add("show");
-  setTimeout(()=>t.classList.remove("show"),1500);
-}
-
 function addRow(){
-  if (ROWS.length >= MAX_ROWS) return toast("Max 10 rows reached");
+  if (ROWS.length >= MAX_ROWS) return alert("Max 10 rows allowed");
   ROWS.push({product:"", sku:"", units:"", disc:"0"});
   render();
 }
@@ -153,6 +142,12 @@ function clearAll(){
   render();
 }
 
+function itemUnit(i){
+  const r = ROWS[i];
+  if (!r.product || !r.sku) return "";
+  return MASTER[r.product][r.sku].unit;
+}
+
 function render(){
   const tbody = $("tbody");
   tbody.innerHTML = "";
@@ -161,52 +156,42 @@ function render(){
     const tr = document.createElement("tr");
 
     const productOptions = Object.keys(MASTER)
-      .map(p=>`<option value="${p}" ${p===r.product?'selected':''}>${p}</option>`)
+      .map(p => `<option value="${p}" ${r.product===p?'selected':''}>${p}</option>`)
       .join("");
 
     let skuOptions = "<option value=''>Select</option>";
-    let rate = 0, packSize = 0, finalQty = 0, gstPct = 0;
+    let rate = 0, finalQty = "", units = r.units || 0;
 
     if (r.product) {
       Object.keys(MASTER[r.product]).forEach(s=>{
-        skuOptions += `<option value="${s}" ${s===r.sku?'selected':''}>${s}</option>`;
+        skuOptions += `<option value="${s}" ${r.sku===s?'selected':''}>${s}</option>`;
       });
     }
 
-    if (r.product && r.sku) {
-      rate = MASTER[r.product][r.sku].rate;
-      packSize = MASTER[r.product][r.sku].packSize;
-      gstPct = MASTER[r.product][r.sku].gst;
-
-      if (r.units) finalQty = (packSize * Number(r.units)).toFixed(3);
+    if (r.product && r.sku && units) {
+      const item = MASTER[r.product][r.sku];
+      finalQty = (item.packSize * Number(units)).toFixed(2) + " " + item.unit;
+      rate = item.rate;
     }
 
     tr.innerHTML = `
-      <td>
-        <select onchange="ROWS[${i}].product=this.value; ROWS[${i}].sku=''; render()">
-          <option value="">Select</option>
-          ${productOptions}
-        </select>
-      </td>
+      <td><select onchange="ROWS[${i}].product=this.value; ROWS[${i}].sku=''; render()">
+            <option value="">Select</option>${productOptions}</select></td>
 
-      <td>
-        <select onchange="ROWS[${i}].sku=this.value; render()">
-          ${skuOptions}
-        </select>
-      </td>
+      <td><select onchange="ROWS[${i}].sku=this.value; render()">${skuOptions}</select></td>
 
       <td class="num">${rate ? rate.toFixed(2) : "-"}</td>
 
       <td class="num">
         <input type="number" min="1" step="1" value="${r.units}"
-          oninput="ROWS[${i}].units=this.value; calcTotals()" />
+               oninput="ROWS[${i}].units=this.value; calcTotals()"/>
       </td>
 
       <td class="num">${finalQty || "-"}</td>
 
       <td class="num">
         <input type="number" min="0" max="100" value="${r.disc}"
-          oninput="ROWS[${i}].disc=this.value; calcTotals()" />
+               oninput="ROWS[${i}].disc=this.value; calcTotals()"/>
       </td>
 
       <td class="num" id="pre_${i}">0.00</td>
@@ -231,9 +216,8 @@ function calcTotals(){
     const item = MASTER[r.product][r.sku];
     const rate = item.rate;
     const gstPct = item.gst;
-
-    const units = parseFloat(r.units);
-    const discPct = parseFloat(r.disc)||0;
+    const units = Number(r.units);
+    const discPct = Number(r.disc);
 
     const gross = rate * units;
     const discAmt = gross * (discPct/100);
@@ -247,41 +231,49 @@ function calcTotals(){
 
     preT += pre; gstT += gst; postT += post;
   });
+
+  $("t_pre").textContent = preT.toFixed(2);
+  $("t_gst").textContent = gstT.toFixed(2);
+  $("t_post").textContent = postT.toFixed(2);
 }
 
 function savePdf(){
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
+  const now = new Date();
+  const timestamp = now.toLocaleDateString() + " " + now.toLocaleTimeString();
+
   doc.setFontSize(14);
   doc.text("Invoice Value Calculator", 14, 12);
   doc.setFontSize(11);
   doc.text(`Distributor: ${$("distributor").value}`, 14, 20);
   doc.text(`Salesman: ${$("salesman").value}`, 14, 26);
-  doc.text(`Timestamp: ${$("timestamp").value}`, 14, 32);
+  doc.text(`Date & Time: ${timestamp}`, 14, 32);
 
   let rows = [];
+  let preT=0, gstT=0, postT=0;
 
   ROWS.forEach(r=>{
     if (!r.product || !r.sku || !r.units) return;
 
     const item = MASTER[r.product][r.sku];
-    const rate = item.rate;
-    const gstPct = item.gst;
     const units = Number(r.units);
     const disc = Number(r.disc);
 
-    const finalQty = (item.packSize * units).toFixed(3);
+    const finalQty = (item.packSize * units).toFixed(2) + " " + item.unit;
 
-    const gross = rate * units;
+    const gross = item.rate * units;
     const discAmt = gross * (disc/100);
     const pre = gross - discAmt;
-    const gst = pre * (gstPct/100);
+    const gst = pre * (item.gst/100);
     const post = pre + gst;
+
+    preT += pre; gstT += gst; postT += post;
 
     rows.push([
       r.sku,
-      rate.toFixed(2),
+      item.rate.toFixed(2),
       units,
       finalQty,
       disc,
@@ -296,6 +288,12 @@ function savePdf(){
     head: [["SKU","Rate","Units","Final Qty (L/Kg)","Disc%","Pre-GST","GST","Post-GST"]],
     body: rows
   });
+
+  let finalY = doc.lastAutoTable.finalY + 12;
+
+  doc.text(`Total Pre-GST: ₹ ${preT.toFixed(2)}`, 14, finalY);
+  doc.text(`Total GST: ₹ ${gstT.toFixed(2)}`, 14, finalY+6);
+  doc.text(`Grand Total: ₹ ${postT.toFixed(2)}`, 14, finalY+12);
 
   doc.save("invoice.pdf");
 }

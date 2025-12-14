@@ -11,16 +11,11 @@ async function loadMasterData() {
     .map(s => `<option value="${s}">${s}</option>`).join("");
 
   changeDistributor(workbook.SheetNames[0]);
-
-  const now = new Date();
-  document.getElementById("timestamp").value =
-    now.toLocaleDateString() + " " + now.toLocaleTimeString();
 }
 
 function changeDistributor(sheetName){
   const sheet = workbook.Sheets[sheetName];
   const rows = XLSX.utils.sheet_to_json(sheet, {header:1});
-
   MASTER = buildMaster(rows);
   render();
 }
@@ -35,21 +30,26 @@ function buildMaster(rows){
     let product = r[1];
     let pack = r[2];
     let pre = r[5];
-    let gst = parseFloat(r[6]); // "18%" or 0.18
+    let gstRaw = r[6];
 
     if (!product || !pack) return;
 
     product = product.trim();
+    const packInfo = parsePack(pack);
 
-    let packInfo = parsePack(pack);
-    let sku = `${product} ${pack}`;
+    const gst = typeof gstRaw === "string" && gstRaw.includes("%")
+      ? parseFloat(gstRaw.replace("%",""))
+      : gstRaw < 1 ? gstRaw * 100 : gstRaw;
+
+    const sku = `${product} ${pack}`;
 
     if (!M[product]) M[product] = {};
 
     M[product][sku] = {
       rate: Number(pre),
-      gst: gst < 1 ? gst*100 : gst,
-      packSize: packInfo.size  // litres or kg
+      gst: gst,
+      packSize: packInfo.size,
+      unit: packInfo.unit
     };
   });
   return M;
