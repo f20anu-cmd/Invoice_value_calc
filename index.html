@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Invoice Value Calculator</title>
 
-  <!-- XLSX for reading Excel -->
+  <!-- XLSX for Excel parsing -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
-  <!-- jsPDF + AutoTable for PDF -->
+  <!-- jsPDF + AutoTable -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 
@@ -17,59 +17,109 @@
       margin:0;
       background:#eef1f6;
       font-family:system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      padding-bottom:120px; /* ensures totals are not hidden */
+      padding-bottom:130px; /* ensures totals not hidden behind sticky PDF bar */
     }
 
     .header {
-      background:#0a74d1; color:white; padding:15px;
-      font-size:20px; font-weight:800;
+      background:#0a74d1;
+      color:#fff;
+      padding:15px;
+      font-size:20px;
+      font-weight:800;
     }
 
     .card {
-      background:white; padding:15px; margin:12px;
-      border-radius:12px; box-shadow:0 2px 6px rgba(0,0,0,0.1);
+      background:white;
+      padding:15px;
+      margin:12px;
+      border-radius:12px;
+      box-shadow:0 2px 6px rgba(0,0,0,0.1);
     }
 
     label {
-      font-size:13px; font-weight:600; margin-bottom:4px; display:block;
+      font-size:13px;
+      font-weight:600;
+      margin-bottom:4px;
+      display:block;
     }
 
     input, select {
-      width:100%; padding:10px;
-      border-radius:8px; border:1px solid #ccc;
-      font-size:14px; box-sizing:border-box;
+      width:100%;
+      padding:10px;
+      border-radius:8px;
+      border:1px solid #ccc;
+      font-size:14px;
+      box-sizing:border-box;
+    }
+
+    .btn-add {
+      width:100%;
+      padding:14px;
+      margin-bottom:10px;
+      background:#0a74d1;
+      color:white;
+      font-size:16px;
+      font-weight:700;
+      border:none;
+      border-radius:8px;
+    }
+
+    .btn-clear {
+      width:100%;
+      padding:14px;
+      background:#4f7fb8;
+      color:white;
+      font-size:16px;
+      font-weight:700;
+      border:none;
+      border-radius:8px;
     }
 
     table {
-      width:100%; border-collapse:separate; border-spacing:0;
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
       min-width:950px;
     }
 
     th {
-      background:#f5f7fa; padding:10px; font-size:12px;
+      background:#0a74d1;
+      color:white;
+      padding:10px;
+      font-size:12px;
       border-bottom:1px solid #ddd;
     }
 
     td {
-      padding:10px; border-bottom:1px solid #eee;
+      padding:10px;
+      border-bottom:1px solid #eee;
     }
 
     .num { text-align:right; }
 
     .stickyBar {
-      position:fixed; bottom:0; left:0; right:0;
-      background:#0a74d1; padding:10px;
+      position:fixed;
+      bottom:0;
+      left:0;
+      right:0;
+      background:#0a74d1;
+      padding:10px;
       box-shadow:0 -2px 6px rgba(0,0,0,0.25);
-      z-index:1000; /* ensures button stays above page */
+      z-index:1000;
     }
 
     .stickyBar button {
-      width:100%; padding:14px; background:white;
-      color:#0a74d1; font-size:16px; font-weight:700;
-      border:none; border-radius:10px;
+      width:100%;
+      padding:14px;
+      background:white;
+      color:#0a74d1;
+      font-size:16px;
+      font-weight:700;
+      border:none;
+      border-radius:10px;
     }
 
-    @media (max-width: 600px) {
+    @media (max-width:600px) {
       .card { margin:8px; padding:12px; }
       table { min-width:900px; }
     }
@@ -80,23 +130,23 @@
 
 <div class="header">Invoice Value Calculator</div>
 
-<!-- Distributor + Salesman (stacked for mobile) -->
+<!-- Distributor + Salesman -->
 <div class="card">
   <div style="margin-bottom:12px;">
     <label>Distributor</label>
     <select id="distributor" onchange="changeDistributor(this.value)"></select>
   </div>
+
   <div>
     <label>Salesman Name</label>
     <input id="salesman" placeholder="Enter salesman name"/>
   </div>
 </div>
 
-<!-- Controls -->
+<!-- Add Row + Clear -->
 <div class="card">
-  <button class="btn-primary" style="width:100%;" onclick="addRow()">+ Add Row</button>
-  <div style="height:8px;"></div>
-  <button class="btn-secondary" style="width:100%;" onclick="clearAll()">Clear</button>
+  <button class="btn-add" onclick="addRow()">+ Add Row</button>
+  <button class="btn-clear" onclick="clearAll()">Clear</button>
 </div>
 
 <!-- Table -->
@@ -130,7 +180,7 @@
   <div><b>Total Amount:</b> <span id="t_post">Rs. 0.00</span></div>
 </div>
 
-<!-- Sticky PDF button -->
+<!-- Sticky PDF Button -->
 <div class="stickyBar">
   <button onclick="savePdf()">Generate PDF</button>
 </div>
@@ -138,6 +188,8 @@
 <script src="js/loadMaster.js"></script>
 
 <script>
+// === FRONT-END TABLE RENDERING LOGIC ===
+
 let ROWS = [];
 const $ = id => document.getElementById(id);
 
@@ -163,12 +215,10 @@ function render(){
   ROWS.forEach((r,i)=>{
     const tr = document.createElement("tr");
 
-    // product dropdown
-    const productOpts = Object.keys(MASTER)
+    let productOpts = Object.keys(MASTER)
       .map(p => `<option value="${p}" ${p===r.product?"selected":""}>${p}</option>`)
       .join("");
 
-    // sku dropdown
     let skuOpts = `<option value=''>Select</option>`;
     if (r.product) {
       Object.keys(MASTER[r.product]).forEach(sku=>{
@@ -182,10 +232,9 @@ function render(){
     if (r.product && r.sku) {
       const item = MASTER[r.product][r.sku];
       rateTxt = item.rate.toFixed(2);
-
       if (r.units) {
-        const qtyVal = (item.packSize * Number(r.units)).toFixed(2);
-        finalQty = `${qtyVal} ${item.unit}`;
+        const qty = (item.packSize * Number(r.units)).toFixed(2);
+        finalQty = `${qty} ${item.unit}`;
       }
     }
 
@@ -197,23 +246,21 @@ function render(){
       </td>
 
       <td>
-        <select onchange="ROWS[${i}].sku=this.value; render()">
-          ${skuOpts}
-        </select>
+        <select onchange="ROWS[${i}].sku=this.value; render()">${skuOpts}</select>
       </td>
 
       <td class="num">Rs. ${rateTxt}</td>
 
       <td class="num">
         <input type="number" min="1" step="1" value="${r.units}"
-          oninput="ROWS[${i}].units=this.value; calcTotals()" />
+               oninput="ROWS[${i}].units=this.value; calcTotals()"/>
       </td>
 
       <td class="num">${finalQty}</td>
 
       <td class="num">
         <input type="number" min="0" max="100" value="${r.disc}"
-          oninput="ROWS[${i}].disc=this.value; calcTotals()" />
+               oninput="ROWS[${i}].disc=this.value; calcTotals()"/>
       </td>
 
       <td class="num" id="pre_${i}">Rs. 0.00</td>
@@ -222,6 +269,7 @@ function render(){
 
       <td><button onclick="removeRow(${i})">x</button></td>
     `;
+
     tbody.appendChild(tr);
   });
 
@@ -248,9 +296,7 @@ function calcTotals(){
     $("gst_"+i).textContent  = "Rs. " + gst.toFixed(2);
     $("post_"+i).textContent = "Rs. " + post.toFixed(2);
 
-    preT  += pre;
-    gstT  += gst;
-    postT += post;
+    preT+=pre; gstT+=gst; postT+=post;
   });
 
   $("t_pre").textContent  = "Rs. " + preT.toFixed(2);
@@ -277,8 +323,8 @@ function savePdf(){
 
   ROWS.forEach(r=>{
     if (!r.product || !r.sku || !r.units) return;
-    const item = MASTER[r.product][r.sku];
 
+    const item = MASTER[r.product][r.sku];
     const units = Number(r.units);
     const disc  = Number(r.disc) || 0;
 
@@ -290,11 +336,10 @@ function savePdf(){
     const gst  = pre * item.gst/100;
     const post = pre + gst;
 
-    preT  += pre;
-    gstT  += gst;
-    postT += post;
+    preT+=pre; gstT+=gst; postT+=post;
 
     rows.push([
+      r.product,
       r.sku,
       item.rate.toFixed(2),
       units,
@@ -308,7 +353,7 @@ function savePdf(){
 
   doc.autoTable({
     startY: 40,
-    head: [["SKU","Rate","Units","Final Qty (L/Kg)","Disc%","Pre-GST","GST","Post-GST"]],
+    head: [["Product","SKU","Rate","Units","Final Qty (L/Kg)","Disc%","Pre-GST","GST","Post-GST"]],
     body: rows
   });
 
