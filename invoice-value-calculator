@@ -1,1 +1,12 @@
+invoice-value-calculator/
+│
+├── index.html
+├── manifest.json
+├── service-worker.js
+│
+├── data/
+│    └── prices.xlsx   ← admin updates ONLY this file
+│
+└── js/
+     └── loadMaster.js
 
