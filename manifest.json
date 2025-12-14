@@ -1,0 +1,8 @@
+{
+  "name": "Invoice Value Calculator",
+  "short_name": "IVC",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f4f6f8",
+  "theme_color": "#1976d2"
+}
