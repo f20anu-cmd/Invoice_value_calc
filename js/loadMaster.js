@@ -1,43 +1,74 @@
+let MASTER = {};
+let workbook = null;
+
 async function loadMasterData() {
-  const response = await fetch("data/prices.xlsx");
-  const buf = await response.arrayBuffer();
-  const workbook = XLSX.read(buf);
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const resp = await fetch("data/prices.xlsx");
+  const buf = await resp.arrayBuffer();
+  workbook = XLSX.read(buf);
+
+  let distSel = document.getElementById("distributor");
+  distSel.innerHTML = workbook.SheetNames
+    .map(s => `<option value="${s}">${s}</option>`).join("");
+
+  changeDistributor(workbook.SheetNames[0]);
+
+  const now = new Date();
+  document.getElementById("timestamp").value =
+    now.toLocaleDateString() + " " + now.toLocaleTimeString();
+}
+
+function changeDistributor(sheetName){
+  const sheet = workbook.Sheets[sheetName];
   const rows = XLSX.utils.sheet_to_json(sheet, {header:1});
 
-  // Find header row
-  const headerIndex = rows.findIndex(r => r.includes("PRODUCAT NAME"));
+  MASTER = buildMaster(rows);
+  render();
+}
 
-  MASTER = {};
+function buildMaster(rows){
+  let HEADER = rows.findIndex(r => r.includes("PRODUCT NAME"));
+  let data = rows.slice(HEADER+1);
 
-  rows.slice(headerIndex + 1).forEach(r => {
-    const product = r[1];
-    const pack = r[2];
-    const pre_gst = parseFloat(r[5]);
-    const gst_percent = parseFloat(r[6]) * 100;
+  let M = {};
+
+  data.forEach(r=>{
+    let product = r[1];
+    let pack = r[2];
+    let pre = r[5];
+    let gst = parseFloat(r[6]); // "18%" or 0.18
 
     if (!product || !pack) return;
 
-    let unit = "Unit";
-    let p = pack.toUpperCase();
-    if (p.includes("ML")) unit = "Ml";
-    else if (p.includes("L")) unit = "Litre";
-    else if (p.includes("KG")) unit = "Kg";
+    product = product.trim();
 
-    const sku = `${product} ${pack}`;
+    let packInfo = parsePack(pack);
+    let sku = `${product} ${pack}`;
 
-    if (!MASTER[product]) MASTER[product] = {};
+    if (!M[product]) M[product] = {};
 
-    MASTER[product][sku] = {
-      unit: unit,
-      rate: pre_gst,
-      gst: gst_percent
+    M[product][sku] = {
+      rate: Number(pre),
+      gst: gst < 1 ? gst*100 : gst,
+      packSize: packInfo.size  // litres or kg
     };
   });
+  return M;
+}
 
-  console.log("MASTER Loaded:", MASTER);
+function parsePack(pack){
+  pack = pack.trim().toUpperCase();
 
-  render();  // Build table with new data
+  if (pack.includes("ML")) {
+    let ml = parseFloat(pack);
+    return { size: ml/1000, unit:"Litre" };
+  }
+  if (pack.includes("L")) {
+    return { size: parseFloat(pack), unit:"Litre" };
+  }
+  if (pack.includes("KG")) {
+    return { size: parseFloat(pack), unit:"Kg" };
+  }
+  return { size:1, unit:"Unit" };
 }
 
 loadMasterData();
