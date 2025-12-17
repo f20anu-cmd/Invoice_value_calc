@@ -1,212 +1,345 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Invoice Value Calculator</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Invoice Value Calculator</title>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+  <!-- XLSX -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
-<style>
-:root{
-  --brand:#0a74d1;
-  --bg:#eef1f6;
-  --card:#fff;
-  --border:#e5e7eb;
-}
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 
-body{
-  margin:0;
-  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
-  background:var(--bg);
-  padding-bottom:120px;
-}
+  <style>
+    :root {
+      --brand:#0a74d1;
+      --brand-soft:#4f7fb8;
+      --bg:#eef1f6;
+      --card:#fff;
+      --border:#e5e7eb;
+      --text:#0f172a;
+    }
 
-.header{
-  background:var(--brand);
-  color:#fff;
-  padding:14px;
-  font-size:20px;
-  font-weight:800;
-}
+    * { box-sizing:border-box; }
 
-.card{
-  background:var(--card);
-  margin:12px;
-  padding:14px;
-  border-radius:14px;
-  box-shadow:0 2px 6px rgba(0,0,0,.08);
-}
+    body {
+      margin:0;
+      font-family:system-ui, -apple-system, "Segoe UI", sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      padding-bottom:130px;
+    }
 
-label{font-size:13px;font-weight:700}
-input,select{
-  width:100%;
-  padding:10px;
-  border-radius:10px;
-  border:1px solid #cbd5e1;
-  margin-top:6px;
-}
+    .header {
+      background:var(--brand);
+      color:#fff;
+      padding:14px 16px;
+      font-size:20px;
+      font-weight:800;
+    }
 
-/* ===== DESKTOP TABLE ===== */
-.tableWrap{overflow-x:auto}
-table{
-  width:100%;
-  border-collapse:collapse;
-  min-width:900px;
-}
-th{
-  background:var(--brand);
-  color:#fff;
-  padding:8px;
-  font-size:12px;
-}
-td{
-  padding:8px;
-  border-bottom:1px solid var(--border);
-  font-size:13px;
-}
-.num{text-align:right}
+    .card {
+      background:var(--card);
+      margin:12px;
+      padding:14px;
+      border-radius:14px;
+      box-shadow:0 2px 6px rgba(0,0,0,.08);
+    }
 
-/* ===== MOBILE CARDS ===== */
-.mobile-list{display:none}
+    label {
+      font-size:13px;
+      font-weight:700;
+      display:block;
+      margin-bottom:6px;
+    }
 
-.mobile-row{
-  border:1px solid var(--border);
-  border-radius:12px;
-  padding:12px;
-  margin-bottom:12px;
-  background:#fff;
-}
-.mobile-row h4{
-  margin:0 0 6px;
-  font-size:14px;
-}
-.mobile-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:6px;
-  font-size:12px;
-}
-.mobile-total{
-  margin-top:6px;
-  font-weight:800;
-  color:#0a74d1;
-}
+    input, select {
+      width:100%;
+      padding:10px;
+      font-size:14px;
+      border-radius:10px;
+      border:1px solid #cbd5e1;
+      background:#fff;
+    }
 
-/* ===== SWITCH LAYOUT ===== */
-@media(max-width:768px){
-  .tableWrap{display:none}
-  .mobile-list{display:block}
-}
-.sticky{
-  position:fixed;
-  bottom:0;left:0;right:0;
-  background:var(--brand);
-  padding:10px;
-}
-.sticky button{
-  width:100%;
-  padding:14px;
-  font-size:16px;
-  font-weight:800;
-  border:none;
-  border-radius:14px;
-  background:#fff;
-  color:var(--brand);
-}
-</style>
+    .btn {
+      width:100%;
+      padding:14px;
+      font-size:16px;
+      font-weight:800;
+      border:none;
+      border-radius:12px;
+      cursor:pointer;
+    }
+
+    .btn-add { background:var(--brand); color:#fff; }
+    .btn-clear { background:var(--brand-soft); color:#fff; }
+
+    /* ===== TABLE ===== */
+
+    .tableWrap {
+      overflow-x:auto;
+      -webkit-overflow-scrolling:touch;
+    }
+
+    table {
+      width:100%;
+      table-layout:fixed;         /* desktop controlled */
+      border-collapse:separate;
+      border-spacing:0;
+      min-width:900px;
+    }
+
+    thead th {
+      background:var(--brand);
+      color:#fff;
+      padding:8px;
+      font-size:12px;
+      text-align:left;
+      white-space:normal;
+      line-height:1.1;
+    }
+
+    tbody td {
+      padding:8px;
+      font-size:13px;
+      border-bottom:1px solid var(--border);
+      white-space:nowrap;
+    }
+
+    .num { text-align:right; }
+
+    input[type="number"] {
+      width:64px;
+      padding:6px;
+      font-size:13px;
+      text-align:right;
+      border-radius:8px;
+    }
+
+    .btn-x {
+      padding:4px 8px;
+      border-radius:8px;
+      border:1px solid #cbd5e1;
+      background:#fff;
+      font-weight:700;
+    }
+
+    /* ===== STICKY PDF ===== */
+
+    .stickyBar {
+      position:fixed;
+      bottom:0; left:0; right:0;
+      background:var(--brand);
+      padding:10px;
+      box-shadow:0 -2px 6px rgba(0,0,0,.25);
+    }
+
+    .stickyBar button {
+      width:100%;
+      padding:14px;
+      font-size:16px;
+      font-weight:900;
+      border:none;
+      border-radius:14px;
+      background:#fff;
+      color:var(--brand);
+    }
+
+    /* ===========================================================
+       MOBILE — TRUE COMPACT MODE (THIS IS THE KEY FIX)
+       =========================================================== */
+
+    @media (max-width:600px) {
+
+      table {
+        table-layout:auto;      /* let browser shrink columns */
+        min-width:unset;
+      }
+
+      thead th {
+        font-size:11px;
+        padding:6px;
+      }
+
+      tbody td {
+        font-size:12px;
+        padding:6px;
+      }
+
+      /* Product + SKU wrap, do NOT expand width */
+      td:nth-child(1),
+      td:nth-child(2) {
+        white-space:normal;
+        word-break:break-word;
+        max-width:110px;
+      }
+
+      /* Numeric columns ultra-compact */
+      .num {
+        padding:4px;
+        font-size:11px;
+      }
+
+      /* Cases / Disc inputs */
+      input[type="number"] {
+        width:44px;
+        min-width:44px;
+        padding:4px;
+        font-size:11px;
+      }
+
+      /* Final Qty column */
+      td:nth-child(5),
+      th:nth-child(5) {
+        max-width:80px;
+        font-size:11px;
+      }
+
+      /* Action column */
+      td:last-child {
+        width:36px;
+        text-align:center;
+      }
+
+      .btn-x {
+        padding:3px 6px;
+        font-size:12px;
+      }
+    }
+  </style>
 </head>
 
 <body>
 
 <div class="header">Invoice Value Calculator</div>
 
+<!-- Distributor + Retailer -->
 <div class="card">
   <label>Distributor</label>
-  <select id="dist">
-    <option>AKSHATHA AGRO AGENCIES</option>
-  </select>
+  <select id="distributor" onchange="changeDistributor(this.value)"></select>
 
-  <label style="margin-top:10px">Retailer Name</label>
-  <input placeholder="Enter retailer name"/>
+  <div style="margin-top:10px;">
+    <label>Retailer Name</label>
+    <input id="retailer" placeholder="Enter retailer name"/>
+  </div>
 </div>
 
+<!-- Actions -->
 <div class="card">
-  <button onclick="addRow()">+ Add Row</button>
+  <button class="btn btn-add" onclick="addRow()">+ Add Row</button>
+  <div style="height:8px"></div>
+  <button class="btn btn-clear" onclick="clearAll()">Clear</button>
 </div>
 
-<!-- DESKTOP TABLE -->
-<div class="card tableWrap">
-<table>
-<thead>
-<tr>
-  <th>Product</th><th>SKU</th>
-  <th>Rate</th><th>Cases</th>
-  <th>Final Qty</th><th>Units</th>
-  <th>Disc</th><th>Pre-GST</th>
-  <th>GST</th><th>Post-GST</th>
-</tr>
-</thead>
-<tbody id="tbody"></tbody>
-</table>
+<!-- Table -->
+<div class="card">
+  <div class="tableWrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>SKU</th>
+          <th class="num">Rate<br>(Rs)</th>
+          <th class="num">Cases</th>
+          <th class="num">Final Qty<br>(L/Kg)</th>
+          <th class="num">Units</th>
+          <th class="num">Disc<br>(%)</th>
+          <th class="num">Pre-GST<br>(Rs)</th>
+          <th class="num">GST<br>(Rs)</th>
+          <th class="num">Post-GST<br>(Rs)</th>
+          <th>Act</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
 </div>
 
-<!-- MOBILE LIST -->
-<div class="card mobile-list" id="mobileList"></div>
-
-<div class="sticky">
-  <button>Generate PDF</button>
+<!-- Totals -->
+<div class="card">
+  <h3>Totals</h3>
+  <div><b>Total Pre-GST:</b> <span id="t_pre">Rs. 0.00</span></div>
+  <div><b>Total GST:</b> <span id="t_gst">Rs. 0.00</span></div>
+  <div><b>Total Amount:</b> <span id="t_post">Rs. 0.00</span></div>
 </div>
+
+<div class="stickyBar">
+  <button onclick="savePdf()">Generate PDF</button>
+</div>
+
+<script src="js/loadMaster.js"></script>
 
 <script>
-let rows=[];
+let ROWS=[];
+const $=id=>document.getElementById(id);
 
-function addRow(){
- rows.push({
-  product:"VELZO", sku:"800GM",
-  rate:2713, cases:2,
-  qty:"1.6 L", units:8,
-  disc:0, pre:4339, gst:217, post:4556
- });
- render();
-}
+function addRow(){ ROWS.push({product:"",sku:"",cases:"",disc:"0"}); render(); }
+function clearAll(){ ROWS=[]; render(); }
+function removeRow(i){ ROWS.splice(i,1); render(); }
 
 function render(){
- const tb=document.getElementById("tbody");
- const ml=document.getElementById("mobileList");
- tb.innerHTML=""; ml.innerHTML="";
+  const tb=$("tbody"); tb.innerHTML="";
+  ROWS.forEach((r,i)=>{
+    const pOpts=Object.keys(MASTER).sort().map(p=>`<option ${p===r.product?"selected":""}>${p}</option>`).join("");
+    let sOpts="<option value=''>Select</option>";
+    if(r.product) Object.keys(MASTER[r.product]).forEach(s=>sOpts+=`<option ${s===r.sku?"selected":""}>${s}</option>`);
 
- rows.forEach(r=>{
-  tb.innerHTML+=`
-   <tr>
-    <td>${r.product}</td>
-    <td>${r.sku}</td>
-    <td class="num">${r.rate}</td>
-    <td class="num">${r.cases}</td>
-    <td class="num">${r.qty}</td>
-    <td class="num">${r.units}</td>
-    <td class="num">${r.disc}%</td>
-    <td class="num">${r.pre}</td>
-    <td class="num">${r.gst}</td>
-    <td class="num">${r.post}</td>
-   </tr>`;
+    let rate="-", qty="-", units="-";
+    if(r.product && r.sku){
+      const it=MASTER[r.product][r.sku];
+      rate=it.rate.toFixed(2);
+      if(r.cases){
+        const q=it.qtyPerCase*r.cases;
+        qty=q.toFixed(2)+" "+it.unit;
+        units=(q/it.packSize).toFixed(2);
+      }
+    }
 
-  ml.innerHTML+=`
-   <div class="mobile-row">
-    <h4>${r.product} (${r.sku})</h4>
-    <div class="mobile-grid">
-      <div>Rate: ₹${r.rate}</div>
-      <div>Cases: ${r.cases}</div>
-      <div>Qty: ${r.qty}</div>
-      <div>Units: ${r.units}</div>
-      <div>Disc: ${r.disc}%</div>
-      <div>GST: ₹${r.gst}</div>
-    </div>
-    <div class="mobile-total">Total: ₹${r.post}</div>
-   </div>`;
- });
+    tb.innerHTML+=`
+    <tr>
+      <td><select onchange="ROWS[${i}].product=this.value;ROWS[${i}].sku='';render()"><option></option>${pOpts}</select></td>
+      <td><select onchange="ROWS[${i}].sku=this.value;render()">${sOpts}</select></td>
+      <td class="num">${rate}</td>
+      <td class="num"><input type="number" value="${r.cases}" oninput="ROWS[${i}].cases=this.value;calcTotals()"/></td>
+      <td class="num">${qty}</td>
+      <td class="num">${units}</td>
+      <td class="num"><input type="number" value="${r.disc}" oninput="ROWS[${i}].disc=this.value;calcTotals()"/></td>
+      <td class="num" id="pre_${i}">0.00</td>
+      <td class="num" id="gst_${i}">0.00</td>
+      <td class="num" id="post_${i}">0.00</td>
+      <td><button class="btn-x" onclick="removeRow(${i})">x</button></td>
+    </tr>`;
+  });
+  calcTotals();
 }
+
+function calcTotals(){
+  let p=0,g=0,t=0;
+  ROWS.forEach((r,i)=>{
+    if(!r.product||!r.sku||!r.cases) return;
+    const it=MASTER[r.product][r.sku];
+    const q=it.qtyPerCase*r.cases;
+    const u=q/it.packSize;
+    const gross=it.rate*u;
+    const d=gross*(r.disc||0)/100;
+    const pre=gross-d;
+    const gst=pre*it.gst/100;
+    const post=pre+gst;
+    $("pre_"+i).textContent=pre.toFixed(2);
+    $("gst_"+i).textContent=gst.toFixed(2);
+    $("post_"+i).textContent=post.toFixed(2);
+    p+=pre; g+=gst; t+=post;
+  });
+  $("t_pre").textContent="Rs. "+p.toFixed(2);
+  $("t_gst").textContent="Rs. "+g.toFixed(2);
+  $("t_post").textContent="Rs. "+t.toFixed(2);
+}
+
+function savePdf(){ alert("PDF logic unchanged"); }
+render();
 </script>
 
 </body>
