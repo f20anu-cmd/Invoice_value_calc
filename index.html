@@ -217,6 +217,7 @@ function render(){
     const tr = document.createElement("tr");
 
     let productOpts = Object.keys(MASTER)
+      .sort()
       .map(p => `<option value="${p}" ${p===r.product?"selected":""}>${p}</option>`)
       .join("");
 
