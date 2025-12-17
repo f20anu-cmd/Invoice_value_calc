@@ -5,35 +5,32 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Invoice Value Calculator</title>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
 <style>
 :root{
   --brand:#0a74d1;
   --bg:#eef1f6;
-  --card:#ffffff;
+  --card:#fff;
   --border:#e5e7eb;
-  --text:#0f172a;
 }
-
-*{box-sizing:border-box}
 
 body{
   margin:0;
   font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
   background:var(--bg);
-  color:var(--text);
-  padding-bottom:140px;
+  padding-bottom:120px;
 }
 
-/* ===== HEADER ===== */
 .header{
   background:var(--brand);
   color:#fff;
-  padding:14px 16px;
+  padding:14px;
   font-size:20px;
   font-weight:800;
 }
 
-/* ===== COMMON CARD ===== */
 .card{
   background:var(--card);
   margin:12px;
@@ -42,17 +39,10 @@ body{
   box-shadow:0 2px 6px rgba(0,0,0,.08);
 }
 
-label{
-  font-size:13px;
-  font-weight:700;
-  display:block;
-  margin-top:8px;
-}
-
+label{font-size:13px;font-weight:700}
 input,select{
   width:100%;
   padding:10px;
-  font-size:14px;
   border-radius:10px;
   border:1px solid #cbd5e1;
   margin-top:6px;
@@ -60,118 +50,70 @@ input,select{
 
 /* ===== DESKTOP TABLE ===== */
 .tableWrap{overflow-x:auto}
-
 table{
   width:100%;
   border-collapse:collapse;
   min-width:900px;
 }
-
 th{
   background:var(--brand);
   color:#fff;
   padding:8px;
   font-size:12px;
 }
-
 td{
   padding:8px;
   border-bottom:1px solid var(--border);
   font-size:13px;
 }
-
 .num{text-align:right}
 
 /* ===== MOBILE CARDS ===== */
 .mobile-list{display:none}
 
 .mobile-row{
-  background:#fff;
   border:1px solid var(--border);
-  border-radius:14px;
+  border-radius:12px;
   padding:12px;
   margin-bottom:12px;
-  transition:transform .25s ease, opacity .25s ease;
+  background:#fff;
 }
-
-.mobile-row.swipe-delete{
-  transform:translateX(-120px);
-  opacity:.2;
+.mobile-row h4{
+  margin:0 0 6px;
+  font-size:14px;
 }
-
-.mobile-header{
-  display:flex;
+.mobile-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
   gap:6px;
-  margin-bottom:6px;
-}
-
-.mobile-header select{
   font-size:12px;
 }
-
-.mobile-line{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  font-size:12px;
-  margin:6px 0;
-}
-
-.mobile-line input{
-  width:72px;
-  padding:6px;
-  font-size:12px;
-  text-align:right;
-}
-
 .mobile-total{
-  margin-top:8px;
-  font-weight:900;
-  color:var(--brand);
-  text-align:right;
+  margin-top:6px;
+  font-weight:800;
+  color:#0a74d1;
 }
 
-/* ===== FLOATING ADD BUTTON ===== */
-.fab{
-  position:fixed;
-  bottom:90px;
-  right:16px;
-  width:56px;
-  height:56px;
-  border-radius:50%;
-  background:var(--brand);
-  color:#fff;
-  font-size:30px;
-  border:none;
-  box-shadow:0 4px 12px rgba(0,0,0,.3);
-  cursor:pointer;
-  display:none;
+/* ===== SWITCH LAYOUT ===== */
+@media(max-width:768px){
+  .tableWrap{display:none}
+  .mobile-list{display:block}
 }
-
-/* ===== STICKY PDF ===== */
 .sticky{
   position:fixed;
   bottom:0;left:0;right:0;
   background:var(--brand);
   padding:10px;
 }
-
 .sticky button{
   width:100%;
   padding:14px;
   font-size:16px;
-  font-weight:900;
+  font-weight:800;
   border:none;
   border-radius:14px;
   background:#fff;
   color:var(--brand);
-}
-
-/* ===== RESPONSIVE SWITCH ===== */
-@media(max-width:768px){
-  .tableWrap{display:none}
-  .mobile-list{display:block}
-  .fab{display:block}
 }
 </style>
 </head>
@@ -180,15 +122,18 @@ td{
 
 <div class="header">Invoice Value Calculator</div>
 
-<!-- Distributor / Retailer -->
 <div class="card">
   <label>Distributor</label>
-  <select id="distributor">
+  <select id="dist">
     <option>AKSHATHA AGRO AGENCIES</option>
   </select>
 
-  <label>Retailer Name</label>
-  <input id="retailer" placeholder="Enter retailer name"/>
+  <label style="margin-top:10px">Retailer Name</label>
+  <input placeholder="Enter retailer name"/>
+</div>
+
+<div class="card">
+  <button onclick="addRow()">+ Add Row</button>
 </div>
 
 <!-- DESKTOP TABLE -->
@@ -196,160 +141,72 @@ td{
 <table>
 <thead>
 <tr>
-  <th>Product</th>
-  <th>SKU</th>
-  <th>Rate (Rs)</th>
-  <th>Cases</th>
-  <th>Final Qty</th>
-  <th>Units</th>
-  <th>Disc %</th>
-  <th>Pre-GST</th>
-  <th>GST</th>
-  <th>Post-GST</th>
+  <th>Product</th><th>SKU</th>
+  <th>Rate</th><th>Cases</th>
+  <th>Final Qty</th><th>Units</th>
+  <th>Disc</th><th>Pre-GST</th>
+  <th>GST</th><th>Post-GST</th>
 </tr>
 </thead>
 <tbody id="tbody"></tbody>
 </table>
 </div>
 
-<!-- MOBILE CARDS -->
+<!-- MOBILE LIST -->
 <div class="card mobile-list" id="mobileList"></div>
 
-<!-- FLOATING ADD -->
-<button class="fab" onclick="addRow()">+</button>
-
-<!-- STICKY PDF -->
 <div class="sticky">
-  <button onclick="generatePDF()">Generate PDF</button>
+  <button>Generate PDF</button>
 </div>
 
 <script>
-/* ============================
-   OFFLINE STORAGE
-============================ */
-const STORAGE_KEY="invoice_rows_v1";
-let rows=JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]");
+let rows=[];
 
-/* ============================
-   MASTER DATA (demo)
-============================ */
-const MASTER={
-  "VELZO":{"800GM":{rate:2713,pack:0.8}},
-  "COSUIT":{"500GM":{rate:1850,pack:0.5}}
-};
-
-/* ============================
-   HELPERS
-============================ */
-function saveState(){
-  localStorage.setItem(STORAGE_KEY,JSON.stringify(rows));
-}
-
-function calc(row){
-  const item=MASTER[row.product][row.sku];
-  const qty=(row.cases*item.pack).toFixed(2);
-  const units=(qty/item.pack).toFixed(1);
-  const gross=item.rate*row.cases;
-  const discAmt=gross*(row.disc||0)/100;
-  const pre=gross-discAmt;
-  const gst=(pre*0.05).toFixed(2);
-  const post=(+pre + +gst).toFixed(2);
-  return {rate:item.rate,qty,units,pre:pre.toFixed(2),gst,post};
-}
-
-/* ============================
-   ACTIONS
-============================ */
 function addRow(){
-  rows.push({product:"VELZO",sku:"800GM",cases:1,disc:0});
-  saveState(); render();
+ rows.push({
+  product:"VELZO", sku:"800GM",
+  rate:2713, cases:2,
+  qty:"1.6 L", units:8,
+  disc:0, pre:4339, gst:217, post:4556
+ });
+ render();
 }
 
-function deleteRow(i){
-  rows.splice(i,1);
-  saveState(); render();
-}
-
-/* ============================
-   RENDER
-============================ */
 function render(){
-  const tb=document.getElementById("tbody");
-  const ml=document.getElementById("mobileList");
-  tb.innerHTML=""; ml.innerHTML="";
+ const tb=document.getElementById("tbody");
+ const ml=document.getElementById("mobileList");
+ tb.innerHTML=""; ml.innerHTML="";
 
-  rows.forEach((r,i)=>{
-    const c=calc(r);
+ rows.forEach(r=>{
+  tb.innerHTML+=`
+   <tr>
+    <td>${r.product}</td>
+    <td>${r.sku}</td>
+    <td class="num">${r.rate}</td>
+    <td class="num">${r.cases}</td>
+    <td class="num">${r.qty}</td>
+    <td class="num">${r.units}</td>
+    <td class="num">${r.disc}%</td>
+    <td class="num">${r.pre}</td>
+    <td class="num">${r.gst}</td>
+    <td class="num">${r.post}</td>
+   </tr>`;
 
-    /* Desktop row */
-    tb.innerHTML+=`
-    <tr>
-      <td>${r.product}</td>
-      <td>${r.sku}</td>
-      <td class="num">${c.rate}</td>
-      <td class="num">${r.cases}</td>
-      <td class="num">${c.qty}</td>
-      <td class="num">${c.units}</td>
-      <td class="num">${r.disc}%</td>
-      <td class="num">${c.pre}</td>
-      <td class="num">${c.gst}</td>
-      <td class="num">${c.post}</td>
-    </tr>`;
-
-    /* Mobile card */
-    ml.innerHTML+=`
-    <div class="mobile-row" data-index="${i}">
-      <div class="mobile-header">
-        <select onchange="rows[${i}].product=this.value;rows[${i}].sku=Object.keys(MASTER[this.value])[0];saveState();render()">
-          ${Object.keys(MASTER).map(p=>`<option ${p===r.product?"selected":""}>${p}</option>`).join("")}
-        </select>
-        <select onchange="rows[${i}].sku=this.value;saveState();render()">
-          ${Object.keys(MASTER[r.product]).map(s=>`<option ${s===r.sku?"selected":""}>${s}</option>`).join("")}
-        </select>
-      </div>
-
-      <div class="mobile-line"><span>Rate</span><span>₹${c.rate}</span></div>
-      <div class="mobile-line">
-        <span>Cases</span>
-        <input type="number" value="${r.cases}" oninput="rows[${i}].cases=this.value;saveState();render()">
-      </div>
-      <div class="mobile-line">
-        <span>Discount %</span>
-        <input type="number" value="${r.disc}" oninput="rows[${i}].disc=this.value;saveState();render()">
-      </div>
-      <div class="mobile-line"><span>Qty</span><span>${c.qty} | ${c.units} units</span></div>
-      <div class="mobile-total">Total: ₹${c.post}</div>
-    </div>`;
-  });
-
-  attachSwipe();
+  ml.innerHTML+=`
+   <div class="mobile-row">
+    <h4>${r.product} (${r.sku})</h4>
+    <div class="mobile-grid">
+      <div>Rate: ₹${r.rate}</div>
+      <div>Cases: ${r.cases}</div>
+      <div>Qty: ${r.qty}</div>
+      <div>Units: ${r.units}</div>
+      <div>Disc: ${r.disc}%</div>
+      <div>GST: ₹${r.gst}</div>
+    </div>
+    <div class="mobile-total">Total: ₹${r.post}</div>
+   </div>`;
+ });
 }
-
-/* ============================
-   SWIPE TO DELETE
-============================ */
-function attachSwipe(){
-  document.querySelectorAll(".mobile-row").forEach(el=>{
-    let startX=0;
-    el.addEventListener("touchstart",e=>startX=e.touches[0].clientX);
-    el.addEventListener("touchend",e=>{
-      const diff=e.changedTouches[0].clientX-startX;
-      if(diff<-80){
-        el.classList.add("swipe-delete");
-        setTimeout(()=>deleteRow(el.dataset.index),200);
-      }
-    });
-  });
-}
-
-function generatePDF(){
-  alert("PDF logic can be plugged here (unchanged).");
-}
-
-/* ============================
-   INIT
-============================ */
-render();
 </script>
 
 </body>
