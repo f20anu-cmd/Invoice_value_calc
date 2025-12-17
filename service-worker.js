@@ -1,39 +1,41 @@
-const CACHE = "ivc-cache-v1";
-
+/* service-worker.js */
+const CACHE_NAME = "invoice-cache-v4"; // <-- bump this every time you update UI
 const ASSETS = [
   "./",
   "./index.html",
   "./manifest.json",
   "./js/loadMaster.js",
-  "./data/prices.xlsx",
-  "https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js",
-  "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"
+  "./data/", // if you fetch files inside data
 ];
 
-self.addEventListener("install", e=>{
-  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+  );
   self.skipWaiting();
 });
 
-self.addEventListener("activate", e=>{
-  e.waitUntil(
-    caches.keys().then(keys=>Promise.all(
-      keys.map(k=>k!==CACHE?caches.delete(k):null)
-    ))
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.map((k) => (k !== CACHE_NAME ? caches.delete(k) : null)))
+    )
   );
   self.clients.claim();
 });
 
-self.addEventListener("fetch", e=>{
-  e.respondWith(
-    caches.match(e.request).then(resp =>
-      resp || fetch(e.request).then(r=>{
-        if(e.request.method==="GET"){
-          const copy = r.clone();
-          caches.open(CACHE).then(c=>c.put(e.request,copy));
-        }
-        return r;
-      }).catch(()=>resp)
-    )
+self.addEventListener("fetch", (event) => {
+  event.respondWith(
+    caches.match(event.request).then((cached) => {
+      return (
+        cached ||
+        fetch(event.request).then((resp) => {
+          // Optional: runtime cache new requests
+          const copy = resp.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          return resp;
+        })
+      );
+    })
   );
 });
