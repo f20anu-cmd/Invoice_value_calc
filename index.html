@@ -158,8 +158,9 @@
           <th>Product</th>
           <th>SKU</th>
           <th class="num">Rate (Rs.)</th>
-          <th class="num">Units</th>
+          <th class="num">Cases</th>
           <th class="num">Final Qty (L/Kg)</th>
+          <th class="num">Units</th>
           <th class="num">Disc%</th>
           <th class="num">Pre-GST</th>
           <th class="num">GST</th>
@@ -194,7 +195,7 @@ let ROWS = [];
 const $ = id => document.getElementById(id);
 
 function addRow() {
-  ROWS.push({ product:"", sku:"", units:"", disc:"0" });
+  ROWS.push({ product:"", sku:"", cases:"", disc:"0" });
   render();
 }
 
@@ -228,13 +229,17 @@ function render(){
 
     let rateTxt  = "-";
     let finalQty = "-";
+    let unitsTxt = "-";
 
     if (r.product && r.sku) {
       const item = MASTER[r.product][r.sku];
       rateTxt = item.rate.toFixed(2);
-      if (r.units) {
-        const qty = (item.packSize * Number(r.units)).toFixed(2);
-        finalQty = `${qty} ${item.unit}`;
+      if (r.cases) {
+        const cases = Number(r.cases);
+        const totalQtyInLKg = (item.qtyPerCase * cases).toFixed(2);
+        const numUnits = totalQtyInLKg / item.packSize;
+        finalQty = `${totalQtyInLKg} ${item.unit}`;
+        unitsTxt = numUnits.toFixed(2);
       }
     }
 
@@ -252,11 +257,13 @@ function render(){
       <td class="num">Rs. ${rateTxt}</td>
 
       <td class="num">
-        <input type="number" min="1" step="1" value="${r.units}"
-               oninput="ROWS[${i}].units=this.value; calcTotals()"/>
+        <input type="number" min="1" step="1" value="${r.cases}"
+               oninput="ROWS[${i}].cases=this.value; calcTotals()"/>
       </td>
 
       <td class="num">${finalQty}</td>
+
+      <td class="num">${unitsTxt}</td>
 
       <td class="num">
         <input type="number" min="0" max="100" value="${r.disc}"
@@ -280,13 +287,19 @@ function calcTotals(){
   let preT=0, gstT=0, postT=0;
 
   ROWS.forEach((r,i)=>{
-    if (!r.product || !r.sku || !r.units) return;
+    if (!r.product || !r.sku || !r.cases) return;
 
     const item = MASTER[r.product][r.sku];
-    const units = Number(r.units);
+    const cases = Number(r.cases);
     const disc  = Number(r.disc) || 0;
 
-    const gross   = item.rate * units;
+    // Calculate total qty in L/Kg from cases
+    const totalQtyInLKg = item.qtyPerCase * cases;
+    // Calculate number of units
+    const numUnits = totalQtyInLKg / item.packSize;
+
+    // Calculate amounts
+    const gross   = item.rate * numUnits;
     const discAmt = gross * disc/100;
     const pre  = gross - discAmt;
     const gst  = pre * item.gst/100;
@@ -322,15 +335,17 @@ function savePdf(){
   let preT=0, gstT=0, postT=0;
 
   ROWS.forEach(r=>{
-    if (!r.product || !r.sku || !r.units) return;
+    if (!r.product || !r.sku || !r.cases) return;
 
     const item = MASTER[r.product][r.sku];
-    const units = Number(r.units);
+    const cases = Number(r.cases);
     const disc  = Number(r.disc) || 0;
 
-    const finalQty = (item.packSize * units).toFixed(2) + " " + item.unit;
+    const totalQtyInLKg = (item.qtyPerCase * cases).toFixed(2);
+    const numUnits = (totalQtyInLKg / item.packSize).toFixed(2);
+    const finalQty = totalQtyInLKg + " " + item.unit;
 
-    const gross   = item.rate * units;
+    const gross   = item.rate * numUnits;
     const discAmt = gross * disc/100;
     const pre  = gross - discAmt;
     const gst  = pre * item.gst/100;
@@ -342,8 +357,9 @@ function savePdf(){
       r.product,
       r.sku,
       item.rate.toFixed(2),
-      units,
+      cases,
       finalQty,
+      numUnits,
       disc,
       pre.toFixed(2),
       gst.toFixed(2),
@@ -353,7 +369,7 @@ function savePdf(){
 
   doc.autoTable({
     startY: 40,
-    head: [["Product","SKU","Rate","Units","Final Qty (L/Kg)","Disc%","Pre-GST","GST","Post-GST"]],
+    head: [["Product","SKU","Rate","Cases","Final Qty (L/Kg)","Units","Disc%","Pre-GST","GST","Post-GST"]],
     body: rows
   });
 

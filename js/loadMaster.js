@@ -34,10 +34,11 @@ function buildMaster(rows){
   data.forEach(r => {
     const product = r[1];
     const pack    = r[2];
-    const pre     = r[5];
-    const gstRaw  = r[6];
+    const qtyPerCase = r[3];  // QTY per case in L/Kg
+    const pre     = r[5];      // PRE GST (rate per unit)
+    const gstRaw  = r[6];      // GST
 
-    if (!product || !pack || pre == null || gstRaw == null) return;
+    if (!product || !pack || qtyPerCase == null || pre == null || gstRaw == null) return;
 
     const parsedPack = parsePack(String(pack));
 
@@ -58,7 +59,8 @@ function buildMaster(rows){
       rate: Number(pre),
       gst:  gst,
       packSize: parsedPack.size,
-      unit: parsedPack.unit
+      unit: parsedPack.unit,
+      qtyPerCase: Number(qtyPerCase)  // Qty in L/Kg per case
     };
   });
 
